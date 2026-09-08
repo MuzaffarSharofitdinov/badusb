@@ -47,6 +47,18 @@ duckyCommands = {
     'F12': Keycode.F12,
 
 }
+
+# ---- VARIABLE SUPPORT (added) ----
+# Stores variables declared with:  VAR $name = value
+variables = {}
+
+def substituteVars(text):
+    # Replaces any $name found in text with its stored value
+    for name, value in variables.items():
+        text = text.replace("$" + name, str(value))
+    return text
+# ---- END VARIABLE SUPPORT ----
+
 def convertLine(line):
     newline = []
     # print(line)
@@ -80,10 +92,19 @@ def parseLine(line):
     if(line[0:3] == "REM"):
         # ignore ducky script comments
         pass
+    elif(line[0:3] == "VAR"):
+        # VAR $ep = 260
+        rest = line[4:].strip()
+        varname, value = rest.split("=", 1)
+        varname = varname.strip().lstrip("$")
+        value = value.strip()
+        variables[varname] = value
     elif(line[0:5] == "DELAY"):
         time.sleep(float(line[6:])/1000)
     elif(line[0:6] == "STRING"):
-        sendString(line[7:])
+        text = line[7:]
+        text = substituteVars(text)
+        sendString(text)
     elif(line[0:5] == "PRINT"):
         print("[SCRIPT]: " + line[6:])
     elif(line[0:6] == "IMPORT"):

@@ -140,9 +140,7 @@ class WSGIServer:
         self._server_sock = pool.socket(pool.AF_INET,pool.SOCK_STREAM)
         HOST = repr(wifi.radio.ipv4_address_ap)
         self._server_sock.bind((repr(wifi.radio.ipv4_address_ap), self.port))
-        self._server_sock.listen(4)  # CHANGED from 1 to 4: allow a few pending
-        # connections to queue up while the board is briefly busy running a
-        # payload, instead of being refused outright.
+        self._server_sock.listen(1)
 #         if self._debug:
 #             ip = _the_interface.pretty_ip(_the_interface.ip_address)
 #             print("Server available at {0}:{1}".format(ip, self.port))

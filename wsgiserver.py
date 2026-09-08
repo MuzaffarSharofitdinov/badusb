@@ -140,7 +140,9 @@ class WSGIServer:
         self._server_sock = pool.socket(pool.AF_INET,pool.SOCK_STREAM)
         HOST = repr(wifi.radio.ipv4_address_ap)
         self._server_sock.bind((repr(wifi.radio.ipv4_address_ap), self.port))
-        self._server_sock.listen(1)
+        self._server_sock.listen(4)  # CHANGED from 1 to 4: allow a few pending
+        # connections to queue up while the board is briefly busy running a
+        # payload, instead of being refused outright.
 #         if self._debug:
 #             ip = _the_interface.pretty_ip(_the_interface.ip_address)
 #             print("Server available at {0}:{1}".format(ip, self.port))
@@ -167,6 +169,22 @@ class WSGIServer:
             except BadRequestError:
                 self._start_response("400 Bad Request", [])
                 self.finish_response([])
+            except Exception as ex:
+                # ADDED: catch-all so one bad request/script error can't crash
+                # the whole asyncio event loop (which would kill the WiFi AP
+                # and require unplugging the board to recover).
+                print("update_poll error:", ex)
+                try:
+                    self._start_response("500 Internal Server Error", [])
+                    self.finish_response([])
+                except Exception as ex2:
+                    print("update_poll cleanup error:", ex2)
+                    if self._client_sock:
+                        try:
+                            self._client_sock.close()
+                        except Exception:
+                            pass
+                        self._client_sock = None
 
     def finish_response(self, result):
         """

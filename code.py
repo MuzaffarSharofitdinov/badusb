@@ -23,22 +23,12 @@ def startWiFi():
     import ipaddress
 
     print("Connect wifi")
-    # ADDED: guard against calling start_ap() when an AP is already active.
-    # On some CircuitPython/CYW43 (Pico W) combinations, start_ap() internally
-    # tries to stop any existing AP first, and that raises:
-    #   NotImplementedError: Stopping AP is not supported.
-    # This happens e.g. after a soft-reload (Ctrl+D) if the radio still
-    # remembers the previous AP session. Skipping the call when already
-    # active avoids the crash.
-    try:
-        already_active = wifi.radio.ap_active
-    except AttributeError:
-        already_active = False
-
-    if already_active:
-        print("AP already active, skipping start_ap")
-    else:
-        wifi.radio.start_ap('BadUSBWiFi', '12345678')
+    # NOTE: the ap_active guard that was here previously was a workaround
+    # for a CircuitPython 8.0.0 bug (NotImplementedError: Stopping AP is
+    # not supported). That bug is fixed in CircuitPython 10.3.0, and the
+    # guard itself was causing start_ap() to be skipped incorrectly
+    # (leaving WiFi with no IP), so it has been removed.
+    wifi.radio.start_ap('BadUSBWiFi', '12345678')
 
     HOST = repr(wifi.radio.ipv4_address_ap)
     PORT = 80        # Port to listen on

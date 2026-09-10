@@ -172,17 +172,24 @@ class WSGIServer:
                 # the whole asyncio event loop (which would kill the WiFi AP
                 # and require unplugging the board to recover).
                 print("update_poll error:", ex)
-                try:
-                    self._start_response("500 Internal Server Error", [])
-                    self.finish_response([])
-                except Exception as ex2:
-                    print("update_poll cleanup error:", ex2)
-                    if self._client_sock:
-                        try:
-                            self._client_sock.close()
-                        except Exception:
-                            pass
-                        self._client_sock = None
+                # FIXED: finish_response() always closes/clears self._client_sock
+                # in its own finally block, even when it raised the exception
+                # we just caught (e.g. errno 32 Broken Pipe because the client
+                # already disconnected). So by this point self._client_sock may
+                # already be None - only try to send an error response / close
+                # again if there is actually still a socket to use.
+                if self._client_sock:
+                    try:
+                        self._start_response("500 Internal Server Error", [])
+                        self.finish_response([])
+                    except Exception as ex2:
+                        print("update_poll cleanup error:", ex2)
+                        if self._client_sock:
+                            try:
+                                self._client_sock.close()
+                            except Exception:
+                                pass
+                            self._client_sock = None
 
     def finish_response(self, result):
         """
@@ -212,7 +219,11 @@ class WSGIServer:
                             raise
             gc.collect()
         except OSError as ex:
-            if ex.errno != 104:  # [Errno 104] ECONNRESET
+            # CHANGED: also silently ignore errno 32 (Broken Pipe) in addition
+            # to errno 104 (ECONNRESET) - both just mean the client already
+            # disconnected, which is harmless and shouldn't be treated as a
+            # real server error.
+            if ex.errno != 104 and ex.errno != 32:
                 raise
         finally:
             #print("closing")

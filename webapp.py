@@ -165,7 +165,12 @@ def write_script(request, filename):
         fields = data.split("&")
         form_data = {}
         for field in fields:
-            key,value = field.split('=')
+            # FIXED: use split('=', 1) so a value that happens to contain an
+            # extra '=' doesn't break unpacking, and skip any field that has
+            # no '=' at all (e.g. empty/trailing field) instead of crashing.
+            if '=' not in field:
+                continue
+            key,value = field.split('=', 1)
             form_data[key] = value
 
         #print(form_data)
@@ -200,7 +205,10 @@ def write_new_script(request):
             fields = data.split("&")
             form_data = {}
             for field in fields:
-                key,value = field.split('=')
+                # FIXED: same fix as /write/<filename> above.
+                if '=' not in field:
+                    continue
+                key,value = field.split('=', 1)
                 form_data[key] = value
             #print(form_data)
             filename = form_data['scriptName']
